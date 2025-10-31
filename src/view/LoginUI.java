@@ -2,8 +2,13 @@ package view;
 
 import java.util.Scanner;
 import controller.Database;
-import model.CompanyRepresentative;
 import model.User;
+import model.CareerCenterStaff;
+import model.CompanyRepresentative;
+import model.Student;
+import view.StaffUI;
+import view.CompanyRepUI;
+import view.StudentUI;
 
 /**
  * Handles the main login and registration UI for all users.
@@ -83,18 +88,18 @@ public class LoginUI {
         // This will direct the user to their specific menu.
         // We will create these other UI classes next.
         
+        if (user instanceof CareerCenterStaff) {
+            StaffUI.showMenu((CareerCenterStaff) user);
+        } 
         /*
-        if (user instanceof Student) {
-            StudentUI.showStudentMenu((Student) user);
-        } else if (user instanceof CareerCenterStaff) {
-            StaffUI.showStaffMenu((CareerCenterStaff) user);
-        } else if (user instanceof CompanyRepresentative) {
-            CompanyRepUI.showCompanyRepMenu((CompanyRepresentative) user);
+        else if (user instanceof CompanyRepresentative) {
+            CompanyRepUI.showMenu((CompanyRepresentative) user);
+        } else if (user instanceof Student) {
+            StudentUI.showMenu((Student) user);
+        } else {
+            System.out.println("Unknown user type. Cannot proceed.");
         }
         */
-        
-        // For now, we'll just log them out
-        System.out.println("User-specific menu not yet implemented. Logging you out.");
     }
 
     /**

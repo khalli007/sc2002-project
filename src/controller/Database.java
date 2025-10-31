@@ -253,4 +253,49 @@ public class Database {
         }
         return null; // Wrong ID or password
     }
+
+    // --- Approval Methods for Staff ---
+    
+
+    public List<CompanyRepresentative> getPendingCompanyReps() {
+        List<CompanyRepresentative> pending = new ArrayList<>();
+        for (User u : users) {
+            if (u instanceof CompanyRepresentative rep && !rep.isApproved()) {
+                pending.add(rep);
+            }
+        }
+        return pending;
+    }
+
+    /** Approves a company representative */
+    public void approveCompanyRep(CompanyRepresentative rep) {
+        rep.setApproved(true);
+    }
+
+    /** Rejects a company representative (removes them from the system) */
+    public void rejectCompanyRep(CompanyRepresentative rep) {
+        users.remove(rep);
+    }
+
+    /** Returns all internships that are not yet approved */
+    public List<Internship> getPendingInternships() {
+        List<Internship> pending = new ArrayList<>();
+        for (Internship i : internships) {
+            if (!i.isApproved()) {
+                pending.add(i);
+            }
+        }
+        return pending;
+    }
+
+    /** Approves an internship */
+    public void approveInternship(Internship internship) {
+        internship.setApproved(true);
+    }
+
+    /** Rejects an internship (removes it) */
+    public void rejectInternship(Internship internship) {
+        internships.remove(internship);
+    }
+
 }

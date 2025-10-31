@@ -84,4 +84,18 @@ public class Internship implements Serializable {
     // for saving/loading the nextID state.
     public static int getNextID() { return nextID; }
     public static void setNextID(int id) { nextID = id; }
+
+    //Staff UI helper methods
+
+    public boolean isApproved() {
+        return status == InternshipStatus.APPROVED;
+    }
+
+    public void setApproved(boolean approved) {
+        this.status = approved ? InternshipStatus.APPROVED : InternshipStatus.REJECTED;
+    }
+
+    public String getTitle() {
+        return getInternshipTitle();
+    }
 }

@@ -1,134 +1,117 @@
 package view;
 
-import java.util.Scanner;
 import controller.Database;
-import model.CompanyRepresentative;
-import model.User;
-import model.Student; // Import all specific user types
 import model.CareerCenterStaff;
+import model.CompanyRepresentative;
+import model.Internship;
+
+import java.util.List;
+import java.util.Scanner;
 
 /**
- * Handles the main login and registration UI for all users.
- * This is a "Boundary" class.
+ * StaffUI - menu and features for Career Center Staff users.
  */
-public class LoginUI {
-
+public class StaffUI {
     private static final Scanner sc = new Scanner(System.in);
     private static final Database db = Database.getInstance();
-
-    /**
-     * The main application loop. Shows the login menu until the user quits.
-     */
-    public static void showLoginMenu() {
-        boolean running = true;
-        while (running) {
-            System.out.println("\n--- Main Menu ---");
-            System.out.println("1. Login");
-            System.out.println("2. Register as Company Representative");
-            System.out.println("3. Quit");
-            System.out.print("Choose an option: ");
-
-            int choice = -1;
-            try {
-                choice = sc.nextInt();
-            } catch (Exception e) {
-                System.out.println("Invalid input. Please enter a number.");
-                sc.nextLine(); // Clear the bad input
-                continue; // Skip the rest of the loop and start over
-            }
-            sc.nextLine(); // Consume the newline left-over
-
-            switch (choice) {
-                case 1:
-                    handleLogin();
-                    break;
-                case 2:
-                    handleRegister();
-                    break;
-                case 3:
-                    running = false; // This will exit the while-loop
-                    break;
-                default:
-                    System.out.println("Invalid choice. Please try again.");
-            }
-        }
-    }
-
-    /**
-     * Handles the user login process.
-     */
-    private static void handleLogin() {
-        System.out.println("\n--- Login ---");
-        System.out.print("Enter User ID (Email for Reps, NTU ID for Staff, Student ID for Students): ");
-        String userID = sc.nextLine();
-        System.out.print("Enter Password: ");
-        String password = sc.nextLine();
-
-        User user = db.authenticateUser(userID, password);
-
-        if (user == null) {
-            // Check if the user exists but is an unapproved rep
-            User potentialUser = db.findUserById(userID);
-            if (potentialUser instanceof CompanyRepresentative && !((CompanyRepresentative) potentialUser).isApproved()) {
-                System.out.println("Login failed. Your account is still pending approval from Career Center Staff.");
-            } else {
-                System.out.println("Login failed. Invalid User ID or Password.");
-            }
-            return; // Go back to main menu
-        }
-
-        // Login Successful!
-        System.out.println("Login successful. Welcome, " + user.getName() + "!");
-
-        // --- POLYMORPHISM IN ACTION ---
-        // This is the section we are fixing.
-        
-        if (user instanceof Student) {
-            // StudentUI.showStudentMenu((Student) user);
-            System.out.println("Student menu not yet implemented. Logging out.");
-        } else if (user instanceof CareerCenterStaff) {
-            StaffUI.showStaffMenu((CareerCenterStaff) user);
-        } else if (user instanceof CompanyRepresentative) { 
-            // CompanyRepUI.showCompanyRepMenu((CompanyRepresentative) user);
-            System.out.println("Company Rep menu not yet implemented. Logging out.");
-        }
-    }
-
-    /**
-     * Handles the new Company Representative registration process.
-     */
-    private static void handleRegister() {
-        System.out.println("\n--- Company Representative Registration ---");
-        
-        System.out.print("Enter your Name: ");
-        String name = sc.nextLine();
-        System.out.print("Enter your Email (this will be your User ID): ");
-        String email = sc.nextLine();
-        
-        // Check if user ID already exists
-        if (db.findUserById(email) != null) {
-            System.out.println("Registration failed. This email is already in use.");
+    private static void approveCompanyReps() {
+        List<CompanyRepresentative> pending = db.getPendingCompanyReps();
+        if (pending.isEmpty()) {
+            System.out.println("No pending company representatives.");
             return;
         }
 
-        System.out.print("Enter your Company Name: ");
-        String company = sc.nextLine();
-        System.out.print("Enter your Department: ");
-        String dept = sc.nextLine();
-        System.out.print("Enter your Position: ");
-        String pos = sc.nextLine();
-        
-        // Per spec, default password is "password"
-        String password = "password"; 
+        for (int i = 0; i < pending.size(); i++) {
+            System.out.println((i + 1) + ". " + pending.get(i).getName() + " (" + pending.get(i).getCompanyName() + ")");
+        }
 
-        // Create the new rep
-        CompanyRepresentative newRep = new CompanyRepresentative(email, name, password, company, dept, pos);
-        
-        // Add them to the main user list in the database
-        db.getUsers().add(newRep);
-        
-        System.out.println("\nRegistration successful!");
-        System.out.println("Your account is now pending approval from Career Center Staff.");
-        System.out.println("You will be able to log in once your account is approved.");
+        System.out.print("Enter number to approve/reject (or blank to return): ");
+        String input = sc.nextLine();
+        if (input.isEmpty()) return;
+
+        try {
+            int index = Integer.parseInt(input) - 1;
+            CompanyRepresentative rep = pending.get(index);
+
+            System.out.print("Approve (A) or Reject (R)? ");
+            String action = sc.nextLine().trim().toUpperCase();
+
+            if (action.equals("A")) {
+                db.approveCompanyRep(rep);
+                System.out.println(rep.getName() + " approved.");
+            } else if (action.equals("R")) {
+                db.rejectCompanyRep(rep);
+                System.out.println(rep.getName() + " rejected.");
+            } else {
+                System.out.println("Invalid input.");
+            }
+        } catch (Exception e) {
+            System.out.println("Invalid input, returning to menu.");
+        }
     }
+
+    private static void approveInternships() {
+        List<Internship> pending = db.getPendingInternships();
+        if (pending.isEmpty()) {
+            System.out.println("No pending internships.");
+            return;
+        }
+
+        for (int i = 0; i < pending.size(); i++) {
+            System.out.println((i + 1) + ". " + pending.get(i).getTitle() + " (" + pending.get(i).getCompanyName() + ")");
+        }
+
+        System.out.print("Enter number to approve/reject (or blank to return): ");
+        String input = sc.nextLine();
+        if (input.isEmpty()) return;
+
+        try {
+            int index = Integer.parseInt(input) - 1;
+            Internship internship = pending.get(index);
+
+            System.out.print("Approve (A) or Reject (R)? ");
+            String action = sc.nextLine().trim().toUpperCase();
+
+            if (action.equals("A")) {
+                db.approveInternship(internship);
+                System.out.println("Internship approved.");
+            } else if (action.equals("R")) {
+                db.rejectInternship(internship);
+                System.out.println("Internship rejected.");
+            } else {
+                System.out.println("Invalid input.");
+            }
+        } catch (Exception e) {
+            System.out.println("Invalid input, returning to menu.");
+        }
+    }
+    public static void showMenu(CareerCenterStaff staff) {
+        while (true) {
+            System.out.println("\n===== Career Center Staff Menu =====");
+            System.out.println("1. Approve/Reject Company Representatives");
+            System.out.println("2. Approve/Reject Internship Opportunities");
+            System.out.println("3. Generate Reports");
+            System.out.println("4. Logout");
+            System.out.print("Enter choice: ");
+            String choice = sc.nextLine();
+
+            switch (choice) {
+                case "1":
+                    approveCompanyReps();
+                    break;
+                case "2":
+                    approveInternships();
+                    break;
+                case "3":
+                    System.out.println("Report generation not implemented yet.");
+                    break;
+                case "4":
+                    System.out.println("Logging out...");
+                    return;
+                default:
+                    System.out.println("Invalid option. Try again.");
+            }
+        }
+    }
+
 }
