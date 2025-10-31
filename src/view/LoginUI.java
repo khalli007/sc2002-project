@@ -7,8 +7,8 @@ import model.CareerCenterStaff;
 import model.CompanyRepresentative;
 import model.Student;
 import view.StaffUI;
-import view.CompanyRepUI;
-import view.StudentUI;
+//import view.CompanyRepUI;
+//import view.StudentUI;
 
 /**
  * Handles the main login and registration UI for all users.
@@ -91,7 +91,6 @@ public class LoginUI {
         if (user instanceof CareerCenterStaff) {
             StaffUI.showMenu((CareerCenterStaff) user);
         } 
-        /*
         else if (user instanceof CompanyRepresentative) {
             CompanyRepUI.showMenu((CompanyRepresentative) user);
         } else if (user instanceof Student) {
@@ -99,7 +98,7 @@ public class LoginUI {
         } else {
             System.out.println("Unknown user type. Cannot proceed.");
         }
-        */
+
     }
 
     /**
