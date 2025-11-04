@@ -26,8 +26,8 @@ public class Internship implements Serializable {
     private final int internshipID;
     private static int nextID = 1; // A simple way to auto-increment IDs
 
-    public Internship(String internshipTitle, String description, InternshipLevel level, 
-                      String preferredMajor, LocalDate openingDate, LocalDate closingDate, 
+    public Internship(String internshipTitle, String description, InternshipLevel level,
+                      String preferredMajor, LocalDate openingDate, LocalDate closingDate,
                       String companyName, String companyRepInCharge, int slots) {
         
         this.internshipID = nextID++;
@@ -78,6 +78,44 @@ public class Internship implements Serializable {
      */
     public void setVisible(boolean visible) {
         isVisible = visible;
+    }
+
+    public void setInternshipTitle(String internshipTitle) {
+        this.internshipTitle = internshipTitle;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setLevel(InternshipLevel level) {
+        this.level = level;
+    }
+
+    public void setPreferredMajor(String preferredMajor) {
+        this.preferredMajor = preferredMajor;
+    }
+
+    public void setOpeningDate(LocalDate openingDate) {
+        this.openingDate = openingDate;
+    }
+
+    public void setClosingDate(LocalDate closingDate) {
+        this.closingDate = closingDate;
+    }
+
+    public void setSlots(int slots) {
+        this.slots = slots;
+    }
+
+    /**
+     * Checks if applications are open on the provided date.
+     * @param date Date to test against the opening/closing window.
+     * @return True if within range (inclusive).
+     */
+    public boolean isAcceptingOn(LocalDate date) {
+        return (openingDate == null || !date.isBefore(openingDate))
+                && (closingDate == null || !date.isAfter(closingDate));
     }
 
     // This is a special method to link static and non-static worlds

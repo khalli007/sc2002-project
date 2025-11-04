@@ -3,7 +3,9 @@ package controller;
 import java.io.*; // For file input/output
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,6 +62,14 @@ public class Database {
     public List<User> getUsers() {
         return users;
     }
+
+    public void addUser(User user) {
+        users.add(user);
+    }
+
+    public void removeUser(User user) {
+        users.remove(user);
+    }
     
     public List<Student> getStudents() {
         // We use Java Streams to filter the list
@@ -87,8 +97,121 @@ public class Database {
         return internships;
     }
 
+    public void addInternship(Internship internship) {
+        internships.add(internship);
+        sortInternships();
+    }
+
+    public void removeInternship(Internship internship) {
+        internships.remove(internship);
+        sortInternships();
+    }
+
     public List<Application> getApplications() {
         return applications;
+    }
+
+    public void addApplication(Application application) {
+        applications.add(application);
+    }
+
+    public void removeApplication(Application application) {
+        applications.remove(application);
+    }
+
+    public Application findApplicationById(int applicationId) {
+        return applications.stream()
+                .filter(app -> app.getApplicationID() == applicationId)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public Internship findInternshipById(int internshipId) {
+        return internships.stream()
+                .filter(internship -> internship.getInternshipID() == internshipId)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public List<Application> getApplicationsByStudent(String studentId) {
+        return applications.stream()
+                .filter(app -> app.getStudentID().equals(studentId))
+                .collect(Collectors.toList());
+    }
+
+    public List<Application> getApplicationsByInternship(int internshipId) {
+        return applications.stream()
+                .filter(app -> app.getInternshipID() == internshipId)
+                .collect(Collectors.toList());
+    }
+
+    public List<CompanyRepresentative> getPendingCompanyRepresentatives() {
+        return getCompanyRepresentatives().stream()
+                .filter(rep -> !rep.isApproved())
+                .collect(Collectors.toList());
+    }
+
+    public List<Internship> getInternshipsByCompanyRep(String repId) {
+        return internships.stream()
+                .filter(internship -> internship.getCompanyRepInCharge().equals(repId))
+                .sorted(Comparator.comparing(Internship::getInternshipTitle, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+    }
+
+    public long countActiveApplicationsForStudent(String studentId) {
+        return getApplicationsByStudent(studentId).stream()
+                .filter(Application::isActive)
+                .count();
+    }
+
+    public boolean hasStudentAcceptedPlacement(String studentId) {
+        return getApplicationsByStudent(studentId).stream()
+                .anyMatch(app -> app.isAccepted() && app.getWithdrawalStatus() != WithdrawalStatus.APPROVED);
+    }
+
+    public long countAcceptedForInternship(int internshipId) {
+        return getApplicationsByInternship(internshipId).stream()
+                .filter(app -> app.isAccepted() && app.getWithdrawalStatus() != WithdrawalStatus.APPROVED)
+                .count();
+    }
+
+    public void updateInternshipFilledStatus(Internship internship) {
+        if (internship == null) {
+            return;
+        }
+        long acceptedCount = countAcceptedForInternship(internship.getInternshipID());
+        if (internship.getStatus() == InternshipStatus.REJECTED || internship.getStatus() == InternshipStatus.PENDING) {
+            return; // No change required if not yet approved
+        }
+        if (acceptedCount >= internship.getSlots()) {
+            internship.setStatus(InternshipStatus.FILLED);
+        } else if (internship.getStatus() == InternshipStatus.FILLED) {
+            internship.setStatus(InternshipStatus.APPROVED);
+        }
+    }
+
+    public List<Internship> getVisibleInternshipsForStudent(Student student) {
+        LocalDate today = LocalDate.now();
+        return internships.stream()
+                .filter(internship -> internship.getStatus() == InternshipStatus.APPROVED
+                        || internship.getStatus() == InternshipStatus.FILLED)
+                .filter(Internship::isVisible)
+                .filter(internship -> internship.getPreferredMajor().equalsIgnoreCase(student.getMajor()))
+                .filter(internship -> internship.isAcceptingOn(today))
+                .filter(internship -> isLevelEligible(student, internship))
+                .sorted(Comparator.comparing(Internship::getInternshipTitle, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+    }
+
+    private boolean isLevelEligible(Student student, Internship internship) {
+        if (student.getYearOfStudy() <= 2) {
+            return internship.getLevel() == InternshipLevel.BASIC;
+        }
+        return true;
+    }
+
+    public void sortInternships() {
+        internships.sort(Comparator.comparing(Internship::getInternshipTitle, String.CASE_INSENSITIVE_ORDER));
     }
 
     // --- Data Persistence (Save/Load) ---
@@ -136,10 +259,12 @@ public class Database {
                 users = (List<User>) oisUsers.readObject();
                 internships = (List<Internship>) oisInternships.readObject();
                 applications = (List<Application>) oisApplications.readObject();
-                
+
                 // Restore the static ID counters
                 Internship.setNextID(oisIds.readInt());
                 Application.setNextID(oisIds.readInt());
+
+                sortInternships();
 
                 System.out.println("Data loaded successfully.");
 

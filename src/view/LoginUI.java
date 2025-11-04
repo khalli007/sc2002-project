@@ -2,7 +2,9 @@ package view;
 
 import java.util.Scanner;
 import controller.Database;
+import model.CareerCenterStaff;
 import model.CompanyRepresentative;
+import model.Student;
 import model.User;
 
 /**
@@ -24,17 +26,7 @@ public class LoginUI {
             System.out.println("1. Login");
             System.out.println("2. Register as Company Representative");
             System.out.println("3. Quit");
-            System.out.print("Choose an option: ");
-
-            int choice = -1;
-            try {
-                choice = sc.nextInt();
-            } catch (Exception e) {
-                System.out.println("Invalid input. Please enter a number.");
-                sc.nextLine(); // Clear the bad input
-                continue; // Skip the rest of the loop and start over
-            }
-            sc.nextLine(); // Consume the newline left-over
+            int choice = readInt("Choose an option: ");
 
             switch (choice) {
                 case 1:
@@ -78,23 +70,15 @@ public class LoginUI {
         // Login Successful!
         System.out.println("Login successful. Welcome, " + user.getName() + "!");
 
-        // --- POLYMORPHISM IN ACTION ---
-        // We don't know what kind of user it is, so we check.
-        // This will direct the user to their specific menu.
-        // We will create these other UI classes next.
-        
-        /*
-        if (user instanceof Student) {
-            StudentUI.showStudentMenu((Student) user);
-        } else if (user instanceof CareerCenterStaff) {
-            StaffUI.showStaffMenu((CareerCenterStaff) user);
-        } else if (user instanceof CompanyRepresentative) {
-            CompanyRepUI.showCompanyRepMenu((CompanyRepresentative) user);
+        if (user instanceof Student student) {
+            StudentUI.showStudentMenu(student);
+        } else if (user instanceof CareerCenterStaff staff) {
+            StaffUI.showStaffMenu(staff);
+        } else if (user instanceof CompanyRepresentative rep) {
+            CompanyRepUI.showCompanyRepMenu(rep);
         }
-        */
-        
-        // For now, we'll just log them out
-        System.out.println("User-specific menu not yet implemented. Logging you out.");
+
+        System.out.println("Logging out " + user.getName() + "...");
     }
 
     /**
@@ -128,10 +112,22 @@ public class LoginUI {
         CompanyRepresentative newRep = new CompanyRepresentative(email, name, password, company, dept, pos);
         
         // Add them to the main user list in the database
-        db.getUsers().add(newRep);
+        db.addUser(newRep);
         
         System.out.println("\nRegistration successful!");
         System.out.println("Your account is now pending approval from Career Center Staff.");
         System.out.println("You will be able to log in once your account is approved.");
+    }
+
+    private static int readInt(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String input = sc.nextLine();
+            try {
+                return Integer.parseInt(input.trim());
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a valid number.");
+            }
+        }
     }
 }
