@@ -32,7 +32,7 @@ public class Student extends User implements Serializable {
         return major;
     }
 
-    public int getYearOfStudy() {
+    public int getYear() {
         return yearOfStudy;
     }
 }

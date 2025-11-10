@@ -230,6 +230,47 @@ public class Database {
         }
         return null; // Not found
     }
+    public Internship findInternshipById(int id) {
+    for (Internship i : internships) {
+        if (i.getInternshipID() == id)
+            return i;
+    }
+    return null;
+    }
+
+    public List<Application> getApplicationsByStudent(String studentID) {
+        List<Application> result = new ArrayList<>();
+        for (Application a : applications) {
+            if (a.getStudentID().equals(studentID))
+                result.add(a);
+        }
+        return result;
+    }
+
+    public void addApplication(Application app) {
+        applications.add(app);
+    }
+
+    public boolean hasStudentAcceptedPlacement(String studentID) {
+        for (Application a : applications) {
+            if (a.getStudentID().equals(studentID) && a.isAccepted()) return true;
+        }
+        return false;
+    }
+
+    public long countActiveApplicationsForStudent(String studentID) {
+        return applications.stream()
+                .filter(a -> a.getStudentID().equals(studentID))
+                .filter(a -> a.getWithdrawalStatus() != WithdrawalStatus.APPROVED)
+                .count();
+    }
+
+    public long countAcceptedForInternship(int internshipID) {
+        return applications.stream()
+                .filter(a -> a.getInternshipID() == internshipID && a.isAccepted())
+                .count();
+    }
+
 
     /**
      * Attempts to authenticate a user.
@@ -270,11 +311,13 @@ public class Database {
     /** Approves a company representative */
     public void approveCompanyRep(CompanyRepresentative rep) {
         rep.setApproved(true);
+        saveData();
     }
 
     /** Rejects a company representative (removes them from the system) */
     public void rejectCompanyRep(CompanyRepresentative rep) {
         users.remove(rep);
+        saveData();
     }
 
     /** Returns all internships that are not yet approved */
@@ -291,11 +334,15 @@ public class Database {
     /** Approves an internship */
     public void approveInternship(Internship internship) {
         internship.setApproved(true);
+        internship.setVisible(true); // make visible to students
+        saveData();
     }
+
 
     /** Rejects an internship (removes it) */
     public void rejectInternship(Internship internship) {
         internships.remove(internship);
+        saveData();
     }
 
 }

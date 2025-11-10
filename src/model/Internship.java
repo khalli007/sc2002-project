@@ -98,4 +98,9 @@ public class Internship implements Serializable {
     public String getTitle() {
         return getInternshipTitle();
     }
+    
+    public boolean isAcceptingOn(LocalDate date) {
+    return (date.isAfter(openingDate) || date.isEqual(openingDate))
+        && (date.isBefore(closingDate) || date.isEqual(closingDate));
+}
 }
