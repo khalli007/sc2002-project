@@ -8,7 +8,7 @@ import model.InternshipStatus;
 import model.Application;
 import model.ApplicationStatus;
 import model.WithdrawalStatus;
-
+import view.PasswordUI;
 import java.util.List;
 import java.util.Scanner;
 
@@ -26,10 +26,11 @@ public class StudentUI {
             System.out.println("1. View Available Internships");
             System.out.println("2. Apply for Internship");
             System.out.println("3. View My Applications");
-            System.out.println("4. Logout");
+            System.out.println("4. Change Password");
+            System.out.println("5. Logout");
             System.out.print("Enter choice: ");
-            String choice = sc.nextLine();
 
+            String choice = sc.nextLine();
             switch (choice) {
                 case "1":
                     viewInternships(student);
@@ -41,6 +42,9 @@ public class StudentUI {
                     viewApplications(student);
                     break;
                 case "4":
+                    PasswordUI.changePassword(student);
+                    return;
+                case "5":
                     System.out.println("Logging out...");
                     return;
                 default:
@@ -49,29 +53,27 @@ public class StudentUI {
         }
     }
 
-    // View student's applications
-
     private static void viewInternships(Student student) {
         System.out.println("\n--- Available Internships ---");
         List<Internship> internships = db.getInternships();
-
         boolean found = false;
+
         for (Internship i : internships) {
-            // Conditions: must be APPROVED, VISIBLE, and match student's profile
             if (i.getStatus() == InternshipStatus.APPROVED && i.isVisible()) {
-                boolean levelAllowed = (student.getYear() >= 3) ||
-                        (student.getYear() <= 2 && i.getLevel() == InternshipLevel.BASIC);
-                if (levelAllowed && i.getPreferredMajor().equalsIgnoreCase(student.getMajor())) {
-                    System.out.println("[" + i.getInternshipID() + "] " + i.getInternshipTitle() +
-                            " (" + i.getCompanyName() + ") - Level: " + i.getLevel());
+                boolean levelAllowed = (student.getYear() >= 3) || (student.getYear() <= 2 && i.getLevel() == InternshipLevel.BASIC);
+                boolean majorMatch = i.getPreferredMajor().equalsIgnoreCase(student.getMajor());
+
+                if (levelAllowed && majorMatch) {
+                    System.out.println("[" + i.getInternshipID() + "] " + i.getInternshipTitle() + " (" + i.getCompanyName() + ") - Level: " + i.getLevel());
                     found = true;
                 }
             }
         }
-        if (!found) System.out.println("No internships available currently.");
-    }
 
-    //apply for internship
+        if (!found) {
+            System.out.println("No internships available currently.");
+        }
+    }
 
     private static void applyInternship(Student student) {
         System.out.println("\n--- Apply for Internship ---");
@@ -102,14 +104,33 @@ public class StudentUI {
             return;
         }
 
-        // Check eligibility
+        switch (internship.getStatus()) {
+            case APPROVED:
+                if (!internship.isVisible()) {
+                    System.out.println("This internship is not open for applications.");
+                    return;
+                }
+                break;
+            case FILLED:
+                System.out.println("This internship is already filled.");
+                return;
+            default:
+                System.out.println("This internship is not open for applications.");
+                return;
+        }
+
         if (student.getYear() <= 2 && internship.getLevel() != InternshipLevel.BASIC) {
             System.out.println("You can only apply for Basic-level internships.");
             return;
         }
 
-        boolean alreadyApplied = db.getApplicationsByStudent(student.getUserID()).stream()
-                .anyMatch(a -> a.getInternshipID() == internshipID && a.getWithdrawalStatus() != WithdrawalStatus.APPROVED);
+        boolean alreadyApplied = false;
+        for (Application a : db.getApplicationsByStudent(student.getUserID())) {
+            if (a.getInternshipID() == internshipID && a.getWithdrawalStatus() != WithdrawalStatus.APPROVED) {
+                alreadyApplied = true;
+                break;
+            }
+        }
 
         if (alreadyApplied) {
             System.out.println("You have already applied for this internship.");
@@ -119,9 +140,8 @@ public class StudentUI {
         Application newApp = new Application(student.getUserID(), internshipID);
         db.addApplication(newApp);
         System.out.println("Application submitted successfully! Status: PENDING");
+        db.saveData();
     }
-
-    //view applications
 
     private static void viewApplications(Student student) {
         System.out.println("\n--- My Internship Applications ---");
@@ -134,9 +154,7 @@ public class StudentUI {
 
         for (Application app : apps) {
             Internship i = db.findInternshipById(app.getInternshipID());
-            String internshipInfo = (i == null)
-                    ? "[Internship deleted]"
-                    : i.getInternshipTitle() + " (" + i.getCompanyName() + ")";
+            String internshipInfo = (i == null) ? "[Internship deleted]" : i.getInternshipTitle() + " (" + i.getCompanyName() + ")";
             System.out.println("Application ID: " + app.getApplicationID());
             System.out.println("    Internship: " + internshipInfo);
             System.out.println("    Status    : " + app.getStatus());
@@ -149,8 +167,8 @@ public class StudentUI {
         System.out.println("2. Request Withdrawal");
         System.out.println("3. Back");
         System.out.print("Enter choice: ");
-        String choice = sc.nextLine();
 
+        String choice = sc.nextLine();
         switch (choice) {
             case "1":
                 acceptInternship(student);
@@ -165,15 +183,18 @@ public class StudentUI {
         }
     }
 
-    //accept internship
-
     private static void acceptInternship(Student student) {
-        List<Application> successfulApps = db.getApplicationsByStudent(student.getUserID()).stream()
-                .filter(a -> a.getStatus() == ApplicationStatus.SUCCESSFUL)
-                .filter(a -> !a.isAccepted())
-                .toList();
+        List<Application> allApps = db.getApplicationsByStudent(student.getUserID());
+        boolean found = false;
 
-        if (successfulApps.isEmpty()) {
+        for (Application app : allApps) {
+            if (app.getStatus() == ApplicationStatus.SUCCESSFUL && !app.isAccepted()) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
             System.out.println("You have no successful applications to accept.");
             return;
         }
@@ -189,10 +210,13 @@ public class StudentUI {
             return;
         }
 
-        Application chosen = successfulApps.stream()
-                .filter(a -> a.getApplicationID() == appID)
-                .findFirst()
-                .orElse(null);
+        Application chosen = null;
+        for (Application a : allApps) {
+            if (a.getApplicationID() == appID && a.getStatus() == ApplicationStatus.SUCCESSFUL) {
+                chosen = a;
+                break;
+            }
+        }
 
         if (chosen == null) {
             System.out.println("Invalid Application ID.");
@@ -203,8 +227,7 @@ public class StudentUI {
         chosen.setWithdrawalStatus(WithdrawalStatus.NONE);
         System.out.println("Internship accepted successfully!");
 
-        // Withdraw all others
-        for (Application other : db.getApplicationsByStudent(student.getUserID())) {
+        for (Application other : allApps) {
             if (other.getApplicationID() != chosen.getApplicationID()) {
                 other.setStatus(ApplicationStatus.UNSUCCESSFUL);
                 other.setWithdrawalStatus(WithdrawalStatus.APPROVED);
@@ -214,8 +237,6 @@ public class StudentUI {
 
         db.saveData();
     }
-
-    //request withdrawal
 
     private static void requestWithdrawal(Student student) {
         List<Application> apps = db.getApplicationsByStudent(student.getUserID());
@@ -231,25 +252,31 @@ public class StudentUI {
             return;
         }
 
-        Application app = apps.stream()
-                .filter(a -> a.getApplicationID() == appID)
-                .findFirst()
-                .orElse(null);
+        Application selected = null;
+        for (Application a : apps) {
+            if (a.getApplicationID() == appID) {
+                selected = a;
+                break;
+            }
+        }
 
-        if (app == null) {
+        if (selected == null) {
             System.out.println("Application not found.");
             return;
         }
 
-        if (app.getWithdrawalStatus() == WithdrawalStatus.APPROVED) {
-            System.out.println("This application has already been withdrawn.");
-            return;
+        switch (selected.getWithdrawalStatus()) {
+            case APPROVED:
+                System.out.println("This application has already been withdrawn.");
+                return;
+            case REQUESTED:
+                System.out.println("You have already requested withdrawal for this application.");
+                return;
+            default:
+                selected.setWithdrawalStatus(WithdrawalStatus.REQUESTED);
+                System.out.println("Withdrawal request submitted (awaiting staff approval).");
+                db.saveData();
+                break;
         }
-
-        app.setWithdrawalStatus(WithdrawalStatus.REQUESTED);
-        System.out.println("Withdrawal request submitted (awaiting staff approval).");
-        db.saveData();
     }
-
-    
 }

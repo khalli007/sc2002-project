@@ -4,9 +4,15 @@ import controller.Database;
 import model.CareerCenterStaff;
 import model.CompanyRepresentative;
 import model.Internship;
-
-import java.util.List;
+import view.PasswordUI;
 import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.List;
+import model.Application;
+import model.ApplicationStatus;
+import model.WithdrawalStatus;
+import model.InternshipStatus;
+import model.Student;
 
 /**
  * StaffUI - menu and features for Career Center Staff users.
@@ -157,14 +163,99 @@ public class StaffUI {
         }
     }
 
+    private static void manageWithdrawals() {
+        System.out.println("\n--- Manage Withdrawal Requests ---");
+
+        // Get all withdrawal requests
+        List<Application> allApps = db.getApplications();
+        List<Application> pending = new ArrayList<>();
+
+        for (Application a : allApps) {
+            if (a.getWithdrawalStatus() == WithdrawalStatus.REQUESTED) {
+                pending.add(a);
+            }
+        }
+
+        if (pending.isEmpty()) {
+            System.out.println("No pending withdrawal requests.");
+            return;
+        }
+
+        System.out.println("Pending withdrawal requests:");
+        for (int i = 0; i < pending.size(); i++) {
+            Application app = pending.get(i);
+            Student s = (Student) db.findUserById(app.getStudentID());
+            Internship iShip = db.findInternshipById(app.getInternshipID());
+
+            System.out.println((i + 1) + ". Application ID: " + app.getApplicationID());
+            System.out.println("   Student: " + (s != null ? s.getName() : "Unknown"));
+            System.out.println("   Internship: " + (iShip != null ? iShip.getInternshipTitle() : "Unknown"));
+        }
+
+        System.out.print("\nEnter number of request to review (or press Enter to go back): ");
+        String input = sc.nextLine().trim();
+        if (input.isEmpty()) {
+            System.out.println("Returning to menu...");
+            return;
+        }
+
+        int index;
+        try {
+            index = Integer.parseInt(input) - 1;
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid input. Please enter a number.");
+            return;
+        }
+
+        if (index < 0 || index >= pending.size()) {
+            System.out.println("Invalid selection.");
+            return;
+        }
+
+        Application selected = pending.get(index);
+
+        System.out.print("Approve (A) or Reject (R)? ");
+        String choice = sc.nextLine().trim().toUpperCase();
+
+        switch (choice) {
+            case "A":
+                selected.setWithdrawalStatus(WithdrawalStatus.APPROVED);
+                selected.setStatus(ApplicationStatus.UNSUCCESSFUL);
+                System.out.println("Withdrawal approved.");
+                Internship i = db.findInternshipById(selected.getInternshipID());
+                if (i != null && i.getStatus() == InternshipStatus.FILLED) {
+                    long acceptedCount = db.getApplications().stream()
+                            .filter(a -> a.getInternshipID() == i.getInternshipID())
+                            .filter(a -> a.isAccepted())
+                            .count();
+                    if (acceptedCount < i.getSlots()) {
+                        i.setStatus(InternshipStatus.APPROVED);
+                        System.out.println("Internship reopened (slots available again).");
+                    }
+                }
+                break;
+            case "R":
+                selected.setWithdrawalStatus(WithdrawalStatus.REJECTED);
+                System.out.println("Withdrawal rejected.");
+                break;
+            default:
+                System.out.println("Invalid option. Please type A or R.");
+        }
+
+        db.saveData();
+    }
+
+
 
     public static void showMenu(CareerCenterStaff staff) {
         while (true) {
             System.out.println("\n===== Career Center Staff Menu =====");
             System.out.println("1. Approve/Reject Company Representatives");
             System.out.println("2. Approve/Reject Internship Opportunities");
-            System.out.println("3. Generate Reports");
-            System.out.println("4. Logout");
+            System.out.println("3. Manage Withdrawn Applications");
+            System.out.println("4. Generate Reports");
+            System.out.println("5. Change Password");
+            System.out.println("6. Logout");
             System.out.print("Enter choice: ");
             String choice = sc.nextLine();
 
@@ -176,9 +267,15 @@ public class StaffUI {
                     approveInternships();
                     break;
                 case "3":
-                    generateReports();
+                    manageWithdrawals();
                     break;
                 case "4":
+                    generateReports();
+                    break;
+                case "5":
+                    PasswordUI.changePassword(staff);
+                    return;
+                case "6":
                     System.out.println("Logging out...");
                     return;
                 default:

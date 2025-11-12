@@ -8,11 +8,11 @@ import model.ApplicationStatus;
 import model.InternshipStatus;
 import model.Student;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import model.InternshipLevel;
-
-
+import view.PasswordUI;
 
 public class CompanyRepUI {
     private static final Scanner sc = new Scanner(System.in);
@@ -24,7 +24,9 @@ public class CompanyRepUI {
             System.out.println("1. Post a new Internship");
             System.out.println("2. View My Internships");
             System.out.println("3. Manage Applications");
-            System.out.println("4. Logout");
+            System.out.println("4. Toggle Visibility");
+            System.out.println("5. Change Password");
+            System.out.println("6. Logout");
             System.out.print("Enter choice: ");
             String choice = sc.nextLine();
 
@@ -39,6 +41,12 @@ public class CompanyRepUI {
                     manageApplications(rep);
                     break;
                 case "4":
+                    toggleVisibility(rep);
+                    break;
+                case "5":
+                    PasswordUI.changePassword(rep);
+                    return;
+                case "6":
                     System.out.println("Logging out...");
                     return;
                 default:
@@ -48,6 +56,18 @@ public class CompanyRepUI {
     }
 
     private static void postInternship(CompanyRepresentative rep) {
+        long currentCount = 0;
+        for (Internship i : db.getInternships()) {
+            if (i.getCompanyRepInCharge().equals(rep.getUserID())) {
+                currentCount++;
+            }
+        }
+
+        if (currentCount >= 5) {
+            System.out.println("You have reached the maximum of 5 internships.");
+            return;
+        }
+
         System.out.println("\n--- Post New Internship ---");
         System.out.print("Enter Internship Title: ");
         String title = sc.nextLine();
@@ -64,25 +84,20 @@ public class CompanyRepUI {
         String levelInput = sc.nextLine();
         InternshipLevel level;
 
-        switch (levelInput) {
-            case "1":
-                level = InternshipLevel.BASIC;
-                break;
-            case "2":
-                level = InternshipLevel.INTERMEDIATE;
-                break;
-            case "3":
-                level = InternshipLevel.ADVANCED;
-                break;
-            default:
-                System.out.println("Invalid level. Defaulting to BASIC.");
-                level = InternshipLevel.BASIC;
+        if (levelInput.equals("1")) {
+            level = InternshipLevel.BASIC;
+        } else if (levelInput.equals("2")) {
+            level = InternshipLevel.INTERMEDIATE;
+        } else if (levelInput.equals("3")) {
+            level = InternshipLevel.ADVANCED;
+        } else {
+            System.out.println("Invalid level. Defaulting to BASIC.");
+            level = InternshipLevel.BASIC;
         }
 
         System.out.print("Number of slots: ");
         int slots = Integer.parseInt(sc.nextLine());
 
-        // Set realistic dates
         LocalDate openDate = LocalDate.now();
         LocalDate closeDate = openDate.plusMonths(1);
 
@@ -97,30 +112,33 @@ public class CompanyRepUI {
         db.saveData();
     }
 
-
     private static void viewInternships(CompanyRepresentative rep) {
         System.out.println("\n--- My Internships ---");
-        db.getInternships().stream()
-                .filter(i -> i.getCompanyRepInCharge().equals(rep.getUserID()))
-                .forEach(i -> System.out.println(
-                        i.getInternshipTitle() + " (" + i.getStatus() + ")"));
+        for (Internship i : db.getInternships()) {
+            if (i.getCompanyRepInCharge().equals(rep.getUserID())) {
+                System.out.println(i.getInternshipTitle() + " (" + i.getStatus() + ")");
+            }
+        }
     }
 
     private static void manageApplications(CompanyRepresentative rep) {
         System.out.println("\n--- Manage Applications ---");
-        List<Internship> myInternships = db.getInternships().stream()
-                .filter(i -> i.getCompanyRepInCharge().equals(rep.getUserID()))
-                .toList();
+
+        List<Internship> myInternships = new ArrayList<>();
+        for (Internship i : db.getInternships()) {
+            if (i.getCompanyRepInCharge().equals(rep.getUserID())) {
+                myInternships.add(i);
+            }
+        }
 
         if (myInternships.isEmpty()) {
             System.out.println("You have no internships posted.");
             return;
         }
 
-        // Show list of internships
         for (int i = 0; i < myInternships.size(); i++) {
-            Internship iShip = myInternships.get(i);
-            System.out.println((i + 1) + ". " + iShip.getInternshipTitle() + " (" + iShip.getStatus() + ")");
+            Internship in = myInternships.get(i);
+            System.out.println((i + 1) + ". " + in.getInternshipTitle() + " (" + in.getStatus() + ")");
         }
 
         System.out.print("Select an internship number: ");
@@ -142,10 +160,12 @@ public class CompanyRepUI {
 
         Internship chosen = myInternships.get(idx);
 
-        // Show applications for this internship
-        List<Application> apps = db.getApplications().stream()
-                .filter(a -> a.getInternshipID() == chosen.getInternshipID())
-                .toList();
+        List<Application> apps = new ArrayList<>();
+        for (Application a : db.getApplications()) {
+            if (a.getInternshipID() == chosen.getInternshipID()) {
+                apps.add(a);
+            }
+        }
 
         if (apps.isEmpty()) {
             System.out.println("No applications for this internship yet.");
@@ -172,10 +192,13 @@ public class CompanyRepUI {
             return;
         }
 
-        Application target = apps.stream()
-                .filter(a -> a.getApplicationID() == appID)
-                .findFirst()
-                .orElse(null);
+        Application target = null;
+        for (Application a : apps) {
+            if (a.getApplicationID() == appID) {
+                target = a;
+                break;
+            }
+        }
 
         if (target == null) {
             System.out.println("Invalid Application ID.");
@@ -189,11 +212,13 @@ public class CompanyRepUI {
             target.setStatus(ApplicationStatus.SUCCESSFUL);
             System.out.println("Application approved.");
 
-            // Check if internship is now filled
-            long acceptedCount = db.getApplications().stream()
-                    .filter(a -> a.getInternshipID() == chosen.getInternshipID())
-                    .filter(a -> a.getStatus() == ApplicationStatus.SUCCESSFUL)
-                    .count();
+            int acceptedCount = 0;
+            for (Application a : db.getApplications()) {
+                if (a.getInternshipID() == chosen.getInternshipID() &&
+                    a.getStatus() == ApplicationStatus.SUCCESSFUL) {
+                    acceptedCount++;
+                }
+            }
 
             if (acceptedCount >= chosen.getSlots()) {
                 chosen.setStatus(InternshipStatus.FILLED);
@@ -206,6 +231,56 @@ public class CompanyRepUI {
         } else {
             System.out.println("Invalid input.");
         }
+
+        db.saveData();
+    }
+
+    private static void toggleVisibility(CompanyRepresentative rep) {
+        System.out.println("\n--- Toggle Internship Visibility ---");
+
+        List<Internship> myInternships = new ArrayList<>();
+        for (Internship i : db.getInternships()) {
+            if (i.getCompanyRepInCharge().equals(rep.getUserID())) {
+                myInternships.add(i);
+            }
+        }
+
+        if (myInternships.isEmpty()) {
+            System.out.println("You don’t have any internships posted yet.");
+            return;
+        }
+
+        for (int i = 0; i < myInternships.size(); i++) {
+            Internship in = myInternships.get(i);
+            System.out.println((i + 1) + ". " + in.getInternshipTitle() +
+                    " — Visible to students: " + (in.isVisible() ? "Yes" : "No"));
+        }
+
+        System.out.print("Enter the number of the internship to toggle: ");
+        String input = sc.nextLine();
+        if (input.isEmpty()) {
+            System.out.println("No input given. Returning to menu...");
+            return;
+        }
+
+        int index;
+        try {
+            index = Integer.parseInt(input) - 1;
+        } catch (NumberFormatException e) {
+            System.out.println("Please enter a valid number.");
+            return;
+        }
+
+        if (index < 0 || index >= myInternships.size()) {
+            System.out.println("That number doesn’t match any of your internships.");
+            return;
+        }
+
+        Internship chosen = myInternships.get(index);
+        chosen.setVisible(!chosen.isVisible());
+
+        System.out.println("Internship \"" + chosen.getInternshipTitle()
+                + "\" is now " + (chosen.isVisible() ? "VISIBLE to students." : "HIDDEN from students."));
 
         db.saveData();
     }
