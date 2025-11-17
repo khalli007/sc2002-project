@@ -1,13 +1,13 @@
 package controller;
 
-import java.io.*; // For file input/output
+import java.io.*; 
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import model.*; // Import all our model classes
+import model.*; 
 
 /**
  * Manages all application data using a Singleton pattern.
