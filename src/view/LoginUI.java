@@ -19,9 +19,6 @@ public class LoginUI {
     private static final Scanner sc = new Scanner(System.in);
     private static final Database db = Database.getInstance();
 
-    /**
-     * The main application loop. Shows the login menu until the user quits.
-     */
     public static void showLoginMenu() {
         boolean running = true;
         while (running) {
@@ -57,9 +54,6 @@ public class LoginUI {
         }
     }
 
-    /**
-     * Handles the user login process.
-     */
     private static void handleLogin() {
         System.out.println("\n--- Login ---");
         System.out.print("Enter User ID (Email for Reps, NTU ID for Staff, Student ID for Students): ");
@@ -83,11 +77,6 @@ public class LoginUI {
         // Login Successful!
         System.out.println("Login successful. Welcome, " + user.getName() + "!");
 
-        // --- POLYMORPHISM IN ACTION ---
-        // We don't know what kind of user it is, so we check.
-        // This will direct the user to their specific menu.
-        // We will create these other UI classes next.
-        
         if (user instanceof CareerCenterStaff) {
             StaffUI.showMenu((CareerCenterStaff) user);
         } 
@@ -101,9 +90,7 @@ public class LoginUI {
 
     }
 
-    /**
-     * Handles the new Company Representative registration process.
-     */
+//new rep
     private static void handleRegister() {
         System.out.println("\n--- Company Representative Registration ---");
         
@@ -125,7 +112,7 @@ public class LoginUI {
         System.out.print("Enter your Position: ");
         String pos = sc.nextLine();
         
-        // Per spec, default password is "password"
+        // default password is "password"
         String password = "password"; 
 
         // Create the new rep
